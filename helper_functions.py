@@ -36,6 +36,7 @@ def silhouette_score(points: np.ndarray,
     :rtype: float
     """
     ######################################################
+    # Initialize variables
     n = len(points)
     clusters = np.unique(labels)
     silhouette_scores = np.zeros(n)
@@ -56,10 +57,12 @@ def silhouette_score(points: np.ndarray,
                 b_i = min(b_i, b_ij)
 
         # Calculate silhouette score for the i-th data point
-        silhouette_scores[i] = (b_i - a_i) / max(a_i, b_i) if a_i != 0 else 0  # Avoid division by zero
+        silhouette_scores[i] = (b_i - a_i) / max(a_i, b_i) if max(a_i, b_i) != 0 else 0  # Avoid division by zero
 
-    # Overall silhouette score is the mean of individual silhouette scores
-    return np.mean(silhouette_scores)
+    # Mean of silhouette scores
+    silhouette_score = np.mean(silhouette_scores)
+
+    return silhouette_score
 
     ######################################################
     # Sources
