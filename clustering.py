@@ -49,13 +49,14 @@ def kmeans(points: np.ndarray,
     ###################################################### 
     # Initialize cluster centers
     if centers_in is None:
-        centers = points[np.random.choice(len(points), n_clusters, replace=False)]
+        centers = np.array(points[np.random.choice(len(points), n_clusters, replace=False)])
     else:
-        centers = centers_in
+        centers =np.array(centers_in)
 
     # Assign points to the nearest cluster center
     labels = None
     best_inertia = np.inf
+
 
     for _ in range(n_iterations):
         labels_last = np.zeros(len(points))
@@ -65,6 +66,8 @@ def kmeans(points: np.ndarray,
             iterations += 1
 
             # Compute distances from data point to center
+            print(points)
+            print(centers)
             distances = np.linalg.norm(points - centers[:, np.newaxis], axis=2)
 
             # Assign points to the nearest cluster center
@@ -85,8 +88,10 @@ def kmeans(points: np.ndarray,
         # Update best results if this iteration has lower inertia
         if inertia < best_inertia:
             best_inertia = inertia
+            best_centers = centers
+            best_labels = labels_last
 
-    return centers, labels
+    return best_centers, best_labels
 
 def iterative_kmeans(points: np.ndarray,
                      max_n_clusters: int,
@@ -118,15 +123,18 @@ def iterative_kmeans(points: np.ndarray,
     """
     ######################################################
     best_score = -1
+    best_centers = []
+    best_labels = []
     for k in range(1, max_n_clusters): 
         centers_i, labels_i = kmeans(points, k, n_iterations, max_singlerun_iterations)
         score = silhouette_score(points, centers_i, labels_i)
+
         if score >= best_score:
             best_score = score
-            centers = centers_i
-            labels = labels_i
+            best_centers = centers_i
+            best_labels = labels_i
 
-    return centers, labels
+    return best_centers, best_labels
 
 def gmeans(points: np.ndarray,
            tolerance: float,
@@ -154,9 +162,10 @@ def gmeans(points: np.ndarray,
     ######################################################
     # Step 1: Start with k=1 cluster
     centers = np.mean(points, axis=0, keepdims=True)  # First cluster is mean of all points
-
+   
     while True:
         # Step 2: Run k-means
+        print(centers)
         new_centers, labels = kmeans(points, len(centers), n_iterations=1, max_singlerun_iterations=max_singlerun_iterations,
                                      centers_in=centers)  # Call kmeans function
 
