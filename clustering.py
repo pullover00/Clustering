@@ -49,9 +49,10 @@ def kmeans(points: np.ndarray,
     ###################################################### 
     # Initialize cluster centers
     if centers_in is None:
-        centers = np.array(points[np.random.choice(len(points), n_clusters, replace=False)])
+        random_indices = np.random.choice(len(points), n_clusters, replace=False)
+        centers = np.mean(points[random_indices], axis=0, keepdims=True)
     else:
-        centers =np.array(centers_in)
+        centers = centers_in
 
     # Assign points to the nearest cluster center
     labels = None
@@ -66,8 +67,8 @@ def kmeans(points: np.ndarray,
             iterations += 1
 
             # Compute distances from data point to center
-            print(points)
-            print(centers)
+            # print(points)
+          #  print(centers)
             distances = np.linalg.norm(points - centers[:, np.newaxis], axis=2)
 
             # Assign points to the nearest cluster center
@@ -178,13 +179,11 @@ def gmeans(points: np.ndarray,
 
             # Check if the cluster has enough points for covariance matrix calculation
             if len(cluster_points) < 2:
-                final_centers.append(centers[cluster_idx])
+                final_centers.append(np.array(centers[cluster_idx]))  # Convert to NumPy array
                 continue
 
             # Calculate covariance matrix and eigenvalues
             cov_matrix = np.cov(cluster_points, rowvar=False)
-
-            # Check if cov_matrix is at least two-dimensional
             _, eigenvalues = np.linalg.eigh(cov_matrix)
 
             # Calculate two new centers
@@ -196,37 +195,30 @@ def gmeans(points: np.ndarray,
 
                 # Step 4: Run k-means on new centers and subset of points
                 final_center, new_labels = kmeans(cluster_points, len(newer_centers), n_iterations=1,
-                                                  max_singlerun_iterations=max_singlerun_iterations, centers_in=newer_centers)
+                                                max_singlerun_iterations=max_singlerun_iterations, centers_in=newer_centers)
                 final_centers.append(final_center)
 
-        # Convert the final centers list to a NumPy array
-        final_centers = np.array(final_centers)
+                # Step 5: Project points onto cluster
+                v = final_center[0] - final_center[1]
 
-        # Step 5: Project points onto cluster
-        for cluster_idx in range(len(centers)):
-            cluster_points = points[labels == cluster_idx]
-            v = final_centers[2 * cluster_idx] - final_centers[2 * cluster_idx + 1]
+                # Check if the cluster has enough points for projection
+                if len(cluster_points) >= 1:
+                    norm_v = np.linalg.norm(v)
 
-            # Check if the cluster has enough points for projection
-            if len(cluster_points) < 1:
-                continue
+                    # Check if the norm of v is not zero before performing the division
+                    if norm_v != 0:
+                        x_projected = np.dot(cluster_points - final_center[1], v) / norm_v
+                    else:
+                        # Handle the case when the norm is zero (avoid division by zero)
+                        x_projected = np.zeros(len(cluster_points))
 
-            norm_v = np.linalg.norm(v)
-
-            # Check if the norm of v is not zero before performing the division
-            if norm_v != 0:
-                x_projected = np.dot(cluster_points - centers[cluster_idx], v) / norm_v
-            else:
-                # Handle the case when the norm is zero (avoid division by zero)
-                x_projected = np.zeros(len(cluster_points))
-
-            # Step 6: Perform Anderson-Darling normality test
-            estimation, critical, _ = anderson(x_projected)
-            if estimation <= critical[-1] * tolerance:
-                # Check if there are enough clusters before accessing indices
-                if len(final_centers) > 2 * cluster_idx + 1:
-                    final_centers[2 * cluster_idx] = centers[cluster_idx]
-                    final_centers[2 * cluster_idx + 1] = centers[cluster_idx]
+                    # Step 6: Perform Anderson-Darling normality test
+                    estimation, critical, _ = anderson(x_projected)
+                    if estimation <= critical[-1] * tolerance:
+                        # Check if there are enough clusters before accessing indices
+                        if len(final_centers) > 2 * cluster_idx + 1:
+                            final_centers[2 * cluster_idx] = final_center[0]
+                            final_centers[2 * cluster_idx + 1] = final_center[1]
 
         # Step 8: Check convergence
         if np.array_equal(final_centers, centers):
